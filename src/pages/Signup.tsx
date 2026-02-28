@@ -8,9 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 
-export default function Login() {
-  const { signIn, user, role, loading } = useAuth();
+export default function Signup() {
+  const { signUp, user, role, loading } = useAuth();
   const navigate = useNavigate();
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -25,11 +26,17 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < 6) {
+      toast({ title: "Password minimal 6 karakter", variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
     try {
-      await signIn(email, password);
+      await signUp(email, password, fullName);
+      toast({ title: "Akun berhasil dibuat!", description: "Selamat datang di Restoran Mandalika" });
+      navigate("/pesan", { replace: true });
     } catch (err: any) {
-      toast({ title: "Login gagal", description: err.message, variant: "destructive" });
+      toast({ title: "Gagal membuat akun", description: err.message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -42,17 +49,27 @@ export default function Login() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-extrabold text-2xl">
             M
           </div>
-          <CardTitle className="text-2xl font-bold">Restoran Mandalika</CardTitle>
-          <CardDescription>Masuk ke sistem untuk melanjutkan</CardDescription>
+          <CardTitle className="text-2xl font-bold">Daftar Akun</CardTitle>
+          <CardDescription>Buat akun untuk memesan di Restoran Mandalika</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Nama Lengkap</Label>
+              <Input
+                id="fullName"
+                placeholder="Nama lengkap Anda"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="kasir@mandalika.com"
+                placeholder="email@contoh.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -63,20 +80,21 @@ export default function Login() {
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="Minimal 6 karakter"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
             <Button type="submit" className="w-full" size="lg" disabled={submitting}>
-              {submitting ? "Memproses..." : "Masuk"}
+              {submitting ? "Memproses..." : "Daftar"}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Belum punya akun?{" "}
-            <Link to="/signup" className="text-primary font-medium hover:underline">
-              Daftar
+            Sudah punya akun?{" "}
+            <Link to="/login" className="text-primary font-medium hover:underline">
+              Masuk
             </Link>
           </p>
         </CardContent>

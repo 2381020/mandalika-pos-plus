@@ -23,7 +23,7 @@ export function ProtectedRoute({ children, allowedRoles }: Props) {
   if (!user) return <Navigate to="/login" replace />;
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
-    // Redirect to the right dashboard
+    if (role === "customer") return <Navigate to="/pesan" replace />;
     if (role === "kasir") return <Navigate to="/kasir" replace />;
     return <Navigate to="/owner" replace />;
   }
