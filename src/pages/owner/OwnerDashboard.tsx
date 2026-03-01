@@ -3,15 +3,42 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatRupiah } from "@/lib/formatCurrency";
-import { BarChart3, TrendingUp, Receipt } from "lucide-react";
+import { BarChart3, TrendingUp, Receipt, Eye } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useState, useMemo } from "react";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { startOfDay, startOfWeek, startOfMonth, format, subDays } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
+interface TxItem {
+  id: string;
+  menu_item_name: string;
+  quantity: number;
+  price: number;
+  subtotal: number;
+}
+
+const paymentLabel: Record<string, string> = {
+  cash: "Tunai",
+  qris: "QRIS",
+  transfer: "Transfer Bank",
+  ewallet: "E-Wallet",
+};
+
 export default function OwnerDashboard() {
   const [period, setPeriod] = useState("today");
+  const [detailTxId, setDetailTxId] = useState<string | null>(null);
+  const [detailItems, setDetailItems] = useState<TxItem[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const { data: transactions } = useQuery({
     queryKey: ["owner-transactions"],
@@ -53,6 +80,28 @@ export default function OwnerDashboard() {
     }
     return data;
   }, [transactions, period]);
+
+  const openDetail = async (txId: string) => {
+    setDetailTxId(txId);
+    setDetailLoading(true);
+    setDetailItems([]);
+    try {
+      const { data } = await supabase
+        .from("transaction_items")
+        .select("id, menu_item_name, quantity, price, subtotal")
+        .eq("transaction_id", txId);
+      setDetailItems(data ?? []);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    setDetailTxId(null);
+    setDetailItems([]);
+  };
+
+  const detailTx = detailTxId ? (transactions ?? []).find((t) => t.id === detailTxId) : null;
 
   const summaryCards = [
     { title: "Hari Ini", value: formatRupiah(stats.today), sub: `${stats.todayCount} transaksi`, icon: Receipt, color: "text-primary" },
@@ -126,30 +175,83 @@ export default function OwnerDashboard() {
             <div className="space-y-2">
               {(transactions ?? []).slice(0, 10).map((tx) => (
                 <div key={tx.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-muted/50 p-3">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{formatRupiah(tx.total)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(tx.created_at).toLocaleString("id-ID")} • {tx.payment_method}
+                      {new Date(tx.created_at).toLocaleString("id-ID")} • {paymentLabel[tx.payment_method] ?? tx.payment_method}
                     </p>
                   </div>
-                  <Badge variant={tx.is_synced ? "default" : "outline"} className={!tx.is_synced ? "text-warning border-warning" : ""}>
-                    {tx.is_synced ? "Synced" : "Offline"}
-                  </Badge>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openDetail(tx.id)}>
+                      <Eye className="h-3.5 w-3.5" />
+                      Lihat Detail
+                    </Button>
+                    <Badge variant={tx.is_synced ? "default" : "outline"} className={!tx.is_synced ? "text-warning border-warning" : ""}>
+                      {tx.is_synced ? "Synced" : "Offline"}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
+
+        <Dialog open={!!detailTxId} onOpenChange={(open) => !open && closeDetail()}>
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Detail Transaksi</DialogTitle>
+            </DialogHeader>
+            {detailTx && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <span className="font-medium">
+                    {format(new Date(detailTx.created_at), "dd MMM yyyy, HH:mm", { locale: idLocale })}
+                  </span>
+                  <Badge variant={detailTx.is_synced ? "default" : "outline"} className={!detailTx.is_synced ? "text-warning border-warning" : ""}>
+                    {detailTx.is_synced ? "Synced" : "Offline"}
+                  </Badge>
+                  <Badge variant="secondary">
+                    {paymentLabel[detailTx.payment_method] ?? detailTx.payment_method}
+                  </Badge>
+                </div>
+
+                {detailLoading ? (
+                  <p className="text-sm text-muted-foreground">Memuat detail...</p>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Item pesanan</p>
+                    <ul className="divide-y rounded-lg border">
+                      {detailItems.map((item) => (
+                        <li key={item.id} className="flex justify-between items-center py-3 px-3 text-sm">
+                          <span>
+                            {item.menu_item_name} × {item.quantity}
+                          </span>
+                          <span className="font-medium">{formatRupiah(item.subtotal)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex justify-between text-base font-bold pt-2">
+                      <span>Total</span>
+                      <span className="text-primary">{formatRupiah(detailTx.total)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
 }
 
 function Badge({ variant, className = "", children }: { variant: string; className?: string; children: React.ReactNode }) {
+  const variantClass =
+    variant === "default" ? "bg-success/10 text-success" :
+    variant === "secondary" ? "bg-muted text-muted-foreground" :
+    `border ${className}`;
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 ${
-      variant === "default" ? "bg-success/10 text-success" : `border ${className}`
-    }`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 ${variantClass}`}>
       {children}
     </span>
   );
