@@ -220,12 +220,12 @@ export default function OwnerDashboard() {
                     </Button>
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                       onClick={() => setDeleteTxId(tx.id)}
+                      aria-label="Hapus transaksi"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Hapus
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                     <Badge variant={tx.is_synced ? "default" : "outline"} className={!tx.is_synced ? "text-warning border-warning" : ""}>
                       {tx.is_synced ? "Synced" : "Offline"}
