@@ -73,7 +73,7 @@ export default function RiwayatPesanan() {
     <DashboardLayout>
       <div className="space-y-6 max-w-2xl mx-auto">
         <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-          <Receipt className="h-6 w-6" /> Riwayat Pesanan
+          <Receipt className="h-6 w-6" /> Transaksi
         </h1>
 
         {loading ? (
@@ -114,18 +114,21 @@ export default function RiwayatPesanan() {
                   {!tx.items ? (
                     <p className="text-sm text-muted-foreground">Memuat detail...</p>
                   ) : (
-                    <ul className="divide-y">
+                    <div className="space-y-2 mt-2">
                       {tx.items.map((item) => (
-                        <li key={item.id} className="flex justify-between py-2 text-sm">
-                          <span>
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm"
+                        >
+                          <span className="mr-3">
                             {item.menu_item_name} × {item.quantity}
                           </span>
-                          <span className="text-muted-foreground">
+                          <span className="font-medium">
                             {formatRupiah(item.subtotal)}
                           </span>
-                        </li>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   )}
                 </CardContent>
               )}

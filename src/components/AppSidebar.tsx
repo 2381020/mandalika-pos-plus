@@ -8,6 +8,7 @@ import {
   BarChart3,
   UtensilsCrossed,
   LogOut,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +16,7 @@ const kasirLinks = [
   { to: "/kasir", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/kasir/transaksi", icon: ShoppingCart, label: "Transaksi Baru" },
   { to: "/kasir/sinkronisasi", icon: RefreshCw, label: "Sinkronisasi" },
+  { to: "/riwayat", icon: Receipt, label: "Transaksi" },
 ];
 
 const ownerLinks = [
