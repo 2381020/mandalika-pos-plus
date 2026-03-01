@@ -1,9 +1,9 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatRupiah } from "@/lib/formatCurrency";
-import { BarChart3, TrendingUp, Receipt, Eye } from "lucide-react";
+import { BarChart3, TrendingUp, Receipt, Eye, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +12,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
-import { id as idLocale } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { startOfDay, startOfWeek, startOfMonth, format, subDays } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -39,7 +48,10 @@ export default function OwnerDashboard() {
   const [detailTxId, setDetailTxId] = useState<string | null>(null);
   const [detailItems, setDetailItems] = useState<TxItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
+  const queryClient = useQueryClient();
   const { data: transactions } = useQuery({
     queryKey: ["owner-transactions"],
     queryFn: async () => {
@@ -99,6 +111,26 @@ export default function OwnerDashboard() {
   const closeDetail = () => {
     setDetailTxId(null);
     setDetailItems([]);
+  };
+
+  const handleDelete = async (txId: string) => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("transactions").delete().eq("id", txId);
+      if (error) throw error;
+      toast({ title: "Transaksi dihapus" });
+      setDeleteTxId(null);
+      queryClient.invalidateQueries({ queryKey: ["owner-transactions"] });
+      if (detailTxId === txId) closeDetail();
+    } catch (err: unknown) {
+      toast({
+        title: "Gagal menghapus transaksi",
+        description: err instanceof Error ? err.message : "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const detailTx = detailTxId ? (transactions ?? []).find((t) => t.id === detailTxId) : null;
@@ -181,10 +213,19 @@ export default function OwnerDashboard() {
                       {new Date(tx.created_at).toLocaleString("id-ID")} • {paymentLabel[tx.payment_method] ?? tx.payment_method}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openDetail(tx.id)}>
                       <Eye className="h-3.5 w-3.5" />
                       Lihat Detail
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeleteTxId(tx.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Hapus
                     </Button>
                     <Badge variant={tx.is_synced ? "default" : "outline"} className={!tx.is_synced ? "text-warning border-warning" : ""}>
                       {tx.is_synced ? "Synced" : "Offline"}
@@ -240,6 +281,30 @@ export default function OwnerDashboard() {
             )}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!deleteTxId} onOpenChange={(open) => !open && setDeleteTxId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Hapus Transaksi?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Transaksi ini akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (deleteTxId) handleDelete(deleteTxId);
+                }}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? "Menghapus..." : "Hapus"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
