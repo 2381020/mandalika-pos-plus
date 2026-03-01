@@ -2,12 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 import KasirDashboard from "./pages/kasir/KasirDashboard";
 import Transaksi from "./pages/kasir/Transaksi";
 import Sinkronisasi from "./pages/kasir/Sinkronisasi";
@@ -30,10 +29,10 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+            <Route path="/signup" element={<Navigate to="/login" replace />} />
             <Route path="/katalog" element={<Katalog />} />
-            <Route path="/pesan" element={<ProtectedRoute allowedRoles={["customer", "kasir", "owner", "admin"]}><Pesan /></ProtectedRoute>} />
-            <Route path="/riwayat" element={<ProtectedRoute allowedRoles={["customer"]}><RiwayatPesanan /></ProtectedRoute>} />
+            <Route path="/pesan" element={<ProtectedRoute allowedRoles={["kasir", "owner", "admin"]}><Pesan /></ProtectedRoute>} />
+            <Route path="/riwayat" element={<ProtectedRoute allowedRoles={["kasir", "owner", "admin"]}><RiwayatPesanan /></ProtectedRoute>} />
             <Route path="/kasir" element={<ProtectedRoute allowedRoles={["kasir", "admin"]}><KasirDashboard /></ProtectedRoute>} />
             <Route path="/kasir/transaksi" element={<ProtectedRoute allowedRoles={["kasir", "admin"]}><Transaksi /></ProtectedRoute>} />
             <Route path="/kasir/sinkronisasi" element={<ProtectedRoute allowedRoles={["kasir", "admin"]}><Sinkronisasi /></ProtectedRoute>} />

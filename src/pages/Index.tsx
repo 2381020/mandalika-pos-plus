@@ -13,7 +13,7 @@ const Index = () => {
   }
 
   if (!user) return <Navigate to="/katalog" replace />;
-  if (role === "customer") return <Navigate to="/pesan" replace />;
+  if (role === "customer") return <Navigate to="/katalog" replace />;
   if (role === "kasir") return <Navigate to="/kasir" replace />;
   return <Navigate to="/owner" replace />;
 };
