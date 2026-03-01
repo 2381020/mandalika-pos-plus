@@ -1,31 +1,19 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { formatRupiah } from "@/lib/formatCurrency";
-import { UtensilsCrossed, Search } from "lucide-react";
+import { UtensilsCrossed, Search, LogIn } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Link } from "react-router-dom";
+import { useMenuItems, useCategories } from "@/hooks/useMenuData";
 
 export default function Katalog() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      const { data } = await supabase.from("menu_categories").select("*").order("sort_order");
-      return data ?? [];
-    },
-  });
-
-  const { data: menuItems } = useQuery({
-    queryKey: ["menu-items-active"],
-    queryFn: async () => {
-      const { data } = await supabase.from("menu_items").select("*, menu_categories(name)").eq("is_active", true).order("name");
-      return data ?? [];
-    },
-  });
+  const { data: categories } = useCategories();
+  const { data: menuItems } = useMenuItems();
 
   const filtered = useMemo(() => {
     return (menuItems ?? []).filter((item) => {
@@ -40,14 +28,21 @@ export default function Katalog() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-4">
         <div className="mx-auto max-w-4xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg">
-              M
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg">
+                M
+              </div>
+              <div>
+                <h1 className="font-bold text-lg">Restoran Mandalika</h1>
+                <p className="text-xs text-muted-foreground">Katalog Digital</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-lg">Restoran Mandalika</h1>
-              <p className="text-xs text-muted-foreground">Katalog Digital</p>
-            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/login">
+                <LogIn className="h-4 w-4 mr-2" /> Masuk
+              </Link>
+            </Button>
           </div>
 
           <div className="relative mb-3">
