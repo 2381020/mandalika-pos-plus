@@ -64,11 +64,11 @@ export default function OwnerDashboard() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard Owner</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Dashboard Owner</h1>
           <p className="text-sm text-muted-foreground">Ringkasan performa restoran</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
           {summaryCards.map((card) => (
             <Card key={card.title}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -84,10 +84,10 @@ export default function OwnerDashboard() {
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Grafik Penjualan</CardTitle>
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base sm:text-lg">Grafik Penjualan</CardTitle>
             <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-full sm:w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -97,7 +97,7 @@ export default function OwnerDashboard() {
             </Select>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
+            <div className="h-56 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -125,8 +125,8 @@ export default function OwnerDashboard() {
           <CardContent>
             <div className="space-y-2">
               {(transactions ?? []).slice(0, 10).map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
-                  <div>
+                <div key={tx.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-muted/50 p-3">
+                  <div className="min-w-0">
                     <p className="text-sm font-medium">{formatRupiah(tx.total)}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(tx.created_at).toLocaleString("id-ID")} • {tx.payment_method}
@@ -145,9 +145,9 @@ export default function OwnerDashboard() {
   );
 }
 
-function Badge({ variant, className, children }: { variant: string; className?: string; children: React.ReactNode }) {
+function Badge({ variant, className = "", children }: { variant: string; className?: string; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 ${
       variant === "default" ? "bg-success/10 text-success" : `border ${className}`
     }`}>
       {children}

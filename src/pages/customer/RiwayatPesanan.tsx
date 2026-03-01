@@ -71,8 +71,8 @@ export default function RiwayatPesanan() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-4 md:p-6 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+      <div className="space-y-6 max-w-2xl mx-auto">
+        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
           <Receipt className="h-6 w-6" /> Riwayat Pesanan
         </h1>
 
@@ -91,8 +91,8 @@ export default function RiwayatPesanan() {
               className="cursor-pointer"
               onClick={() => toggleExpand(tx.id)}
             >
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
+              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
+                <div className="min-w-0">
                   <CardTitle className="text-base">
                     {format(new Date(tx.created_at), "dd MMM yyyy, HH:mm", { locale: id })}
                   </CardTitle>

@@ -22,13 +22,20 @@ const ownerLinks = [
   { to: "/owner/menu", icon: UtensilsCrossed, label: "Manajemen Menu" },
 ];
 
-export function AppSidebar() {
+const linkClass = (active: boolean) =>
+  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+    active
+      ? "bg-sidebar-accent text-sidebar-primary"
+      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+  }`;
+
+export function SidebarContent({ onLinkClick }: { onLinkClick?: () => void }) {
   const { role, signOut, user } = useAuth();
   const location = useLocation();
   const links = role === "owner" || role === "admin" ? ownerLinks : kasirLinks;
 
   return (
-    <aside className="flex h-screen w-64 flex-col bg-sidebar text-sidebar-foreground">
+    <>
       <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold text-lg">
           M
@@ -46,11 +53,8 @@ export function AppSidebar() {
             <Link
               key={link.to}
               to={link.to}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-sidebar-accent text-sidebar-primary"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              }`}
+              className={linkClass(active)}
+              onClick={onLinkClick}
             >
               <link.icon className="h-4 w-4" />
               {link.label}
@@ -72,6 +76,14 @@ export function AppSidebar() {
           Keluar
         </Button>
       </div>
+    </>
+  );
+}
+
+export function AppSidebar() {
+  return (
+    <aside className="hidden md:flex h-screen w-64 flex-col bg-sidebar text-sidebar-foreground shrink-0">
+      <SidebarContent />
     </aside>
   );
 }

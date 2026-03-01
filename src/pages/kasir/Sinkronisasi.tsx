@@ -75,13 +75,13 @@ export default function Sinkronisasi() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Sinkronisasi</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Sinkronisasi</h1>
             <p className="text-sm text-muted-foreground">{transactions.length} transaksi belum tersinkron</p>
           </div>
-          <Button onClick={syncAll} disabled={!isOnline || syncing || transactions.length === 0} className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+          <Button onClick={syncAll} disabled={!isOnline || syncing || transactions.length === 0} className="gap-2 w-full sm:w-auto shrink-0">
+            <RefreshCw className={`h-4 w-4 shrink-0 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Menyinkronkan..." : "Sinkronkan Semua"}
           </Button>
         </div>

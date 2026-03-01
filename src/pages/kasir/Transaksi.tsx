@@ -145,12 +145,12 @@ export default function Transaksi() {
 
   return (
     <DashboardLayout>
-      <div className="grid h-[calc(100vh-4rem)] gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_380px] lg:gap-6 lg:min-h-[calc(100vh-6rem)]">
         {/* Menu Grid */}
-        <div className="space-y-4 overflow-y-auto pr-2">
-          <h1 className="text-2xl font-bold">Transaksi Baru</h1>
-          <div className="flex gap-3">
-            <div className="relative flex-1">
+        <div className="space-y-4 min-h-0 overflow-y-auto pr-0 lg:pr-2">
+          <h1 className="text-xl sm:text-2xl font-bold">Transaksi Baru</h1>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Cari menu..."
@@ -160,7 +160,7 @@ export default function Transaksi() {
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Kategori" />
               </SelectTrigger>
               <SelectContent>
@@ -172,7 +172,7 @@ export default function Transaksi() {
             </Select>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 xl:grid-cols-3">
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
@@ -200,7 +200,7 @@ export default function Transaksi() {
         </div>
 
         {/* Cart */}
-        <Card className="flex flex-col overflow-hidden">
+        <Card className="flex flex-col overflow-hidden flex-shrink-0 lg:max-h-[calc(100vh-8rem)]">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <ShoppingBag className="h-5 w-5" />

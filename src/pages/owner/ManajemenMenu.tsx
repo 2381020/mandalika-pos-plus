@@ -154,23 +154,23 @@ export default function ManajemenMenu() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Manajemen Menu</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Manajemen Menu</h1>
             <p className="text-sm text-muted-foreground">{(menuItems ?? []).length} item menu</p>
           </div>
-          <Button onClick={openNew} className="gap-2">
-            <Plus className="h-4 w-4" />
+          <Button onClick={openNew} className="gap-2 w-full sm:w-auto shrink-0">
+            <Plus className="h-4 w-4 shrink-0" />
             Tambah Menu
           </Button>
         </div>
 
-        <div className="relative max-w-sm">
+        <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Cari menu..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((item) => (
             <Card key={item.id} className={!item.is_active ? "opacity-60" : ""}>
               <CardContent className="p-4">
@@ -182,8 +182,8 @@ export default function ManajemenMenu() {
                     <UtensilsCrossed className="h-8 w-8 text-muted-foreground" />
                   </div>
                 )}
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <h3 className="font-semibold">{item.name}</h3>
                     <p className="text-xs text-muted-foreground">{(item as any).menu_categories?.name ?? "—"}</p>
                     <p className="text-primary font-bold mt-1">{formatRupiah(item.price)}</p>
@@ -193,9 +193,9 @@ export default function ManajemenMenu() {
                     onCheckedChange={(checked) => toggleActive.mutate({ id: item.id, is_active: checked })}
                   />
                 </div>
-                <div className="mt-3 flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(item)}>
-                    <Pencil className="mr-1 h-3 w-3" /> Edit
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" className="flex-1 min-w-[80px]" onClick={() => openEdit(item)}>
+                    <Pencil className="mr-1 h-3 w-3 shrink-0" /> Edit
                   </Button>
                   <Button variant="outline" size="sm" className="text-destructive" onClick={() => deleteMutation.mutate(item.id)}>
                     <Trash2 className="h-3 w-3" />
@@ -207,7 +207,7 @@ export default function ManajemenMenu() {
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editId ? "Edit Menu" : "Tambah Menu Baru"}</DialogTitle>
             </DialogHeader>

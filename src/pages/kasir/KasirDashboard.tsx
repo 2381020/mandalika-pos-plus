@@ -46,18 +46,18 @@ export default function KasirDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Dashboard Kasir</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Dashboard Kasir</h1>
             <p className="text-muted-foreground text-sm">Ringkasan aktivitas hari ini</p>
           </div>
-          <Button size="lg" onClick={() => navigate("/kasir/transaksi")} className="gap-2">
+          <Button size="lg" onClick={() => navigate("/kasir/transaksi")} className="gap-2 w-full sm:w-auto shrink-0">
             <ShoppingCart className="h-4 w-4" />
             Transaksi Baru
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
           {stats.map((stat) => (
             <Card key={stat.title}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
