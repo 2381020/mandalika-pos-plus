@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatRupiah } from "@/lib/formatCurrency";
 import { toast } from "@/hooks/use-toast";
-import { Search, Plus, Minus, Trash2, ShoppingBag, LogOut } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingBag, LogOut, Receipt } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 
@@ -139,9 +140,16 @@ export default function Pesan() {
             </div>
             <h1 className="text-lg font-bold">Restoran Mandalika</h1>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" /> Keluar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/riwayat">
+                <Receipt className="h-4 w-4 mr-2" /> Riwayat
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" /> Keluar
+            </Button>
+          </div>
         </div>
       </header>
 
