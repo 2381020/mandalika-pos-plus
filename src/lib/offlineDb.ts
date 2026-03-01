@@ -1,6 +1,8 @@
 const DB_NAME = "mandalika_offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "offline_transactions";
+const MENU_STORE = "menu_items_cache";
+const CATEGORIES_STORE = "menu_categories_cache";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -9,6 +11,12 @@ function openDB(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "offline_id" });
+      }
+      if (!db.objectStoreNames.contains(MENU_STORE)) {
+        db.createObjectStore(MENU_STORE, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(CATEGORIES_STORE)) {
+        db.createObjectStore(CATEGORIES_STORE, { keyPath: "id" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -60,5 +68,51 @@ export async function deleteOfflineTransaction(offlineId: string) {
     t.objectStore(STORE_NAME).delete(offlineId);
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
+  });
+}
+
+// --- Menu cache helpers ---
+
+export async function cacheMenuItems(items: any[]) {
+  const db = await openDB();
+  return new Promise<void>((resolve, reject) => {
+    const t = db.transaction(MENU_STORE, "readwrite");
+    const store = t.objectStore(MENU_STORE);
+    store.clear();
+    items.forEach((item) => store.put(item));
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
+export async function getCachedMenuItems(): Promise<any[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(MENU_STORE, "readonly");
+    const req = t.objectStore(MENU_STORE).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function cacheCategories(categories: any[]) {
+  const db = await openDB();
+  return new Promise<void>((resolve, reject) => {
+    const t = db.transaction(CATEGORIES_STORE, "readwrite");
+    const store = t.objectStore(CATEGORIES_STORE);
+    store.clear();
+    categories.forEach((c) => store.put(c));
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}
+
+export async function getCachedCategories(): Promise<any[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(CATEGORIES_STORE, "readonly");
+    const req = t.objectStore(CATEGORIES_STORE).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }

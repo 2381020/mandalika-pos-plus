@@ -3,15 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { formatRupiah } from "@/lib/formatCurrency";
 import { toast } from "@/hooks/use-toast";
 import { Search, Plus, Minus, Trash2, ShoppingBag, LogOut, Receipt } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useNavigate } from "react-router-dom";
+import { useMenuItems, useCategories } from "@/hooks/useMenuData";
 
 interface CartItem {
   menu_item_id: string;
@@ -30,21 +29,8 @@ export default function Pesan() {
   const [amountPaid, setAmountPaid] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  const { data: categories } = useQuery({
-    queryKey: ["categories"],
-    queryFn: async () => {
-      const { data } = await supabase.from("menu_categories").select("*").order("sort_order");
-      return data ?? [];
-    },
-  });
-
-  const { data: menuItems } = useQuery({
-    queryKey: ["menu-items"],
-    queryFn: async () => {
-      const { data } = await supabase.from("menu_items").select("*").eq("is_active", true).order("name");
-      return data ?? [];
-    },
-  });
+  const { data: categories } = useCategories();
+  const { data: menuItems } = useMenuItems();
 
   const filteredItems = useMemo(() => {
     return (menuItems ?? []).filter((item) => {
