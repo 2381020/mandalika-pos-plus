@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatRupiah } from "@/lib/formatCurrency";
-import { BarChart3, TrendingUp, Receipt, Eye, Trash2 } from "lucide-react";
+import { BarChart3, TrendingUp, Receipt, Eye, Trash2, Filter } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +45,11 @@ const paymentLabel: Record<string, string> = {
   ewallet: "E-Wallet",
 };
 
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  pending: { label: "Pending", variant: "outline" },
+  completed: { label: "Selesai", variant: "default" },
+};
+
 export default function OwnerDashboard() {
   const [period, setPeriod] = useState("today");
   const [detailTxId, setDetailTxId] = useState<string | null>(null);
@@ -51,6 +58,11 @@ export default function OwnerDashboard() {
   const [deleteTxId, setDeleteTxId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Filters
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPayment, setFilterPayment] = useState("all");
+  const [filterDate, setFilterDate] = useState("");
+
   const queryClient = useQueryClient();
   const { data: transactions } = useQuery({
     queryKey: ["owner-transactions"],
@@ -58,7 +70,6 @@ export default function OwnerDashboard() {
       const { data } = await supabase
         .from("transactions")
         .select("*")
-        .eq("status", "completed")
         .order("created_at", { ascending: false });
       return data ?? [];
     },
@@ -71,28 +82,40 @@ export default function OwnerDashboard() {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString();
     const monthStart = startOfMonth(now).toISOString();
 
-    const today = transactions.filter((t) => t.created_at >= todayStart).reduce((s, t) => s + t.total, 0);
-    const todayCount = transactions.filter((t) => t.created_at >= todayStart).length;
-    const week = transactions.filter((t) => t.created_at >= weekStart).reduce((s, t) => s + t.total, 0);
-    const month = transactions.filter((t) => t.created_at >= monthStart).reduce((s, t) => s + t.total, 0);
+    const completed = transactions.filter((t) => t.status === "completed");
+    const today = completed.filter((t) => t.created_at >= todayStart).reduce((s, t) => s + t.total, 0);
+    const todayCount = completed.filter((t) => t.created_at >= todayStart).length;
+    const week = completed.filter((t) => t.created_at >= weekStart).reduce((s, t) => s + t.total, 0);
+    const month = completed.filter((t) => t.created_at >= monthStart).reduce((s, t) => s + t.total, 0);
     return { today, week, month, todayCount };
   }, [transactions]);
 
   const chartData = useMemo(() => {
     if (!transactions) return [];
+    const completed = transactions.filter((t) => t.status === "completed");
     const days = period === "monthly" ? 30 : 7;
     const data: { date: string; total: number }[] = [];
     for (let i = days - 1; i >= 0; i--) {
       const d = subDays(new Date(), i);
       const dateStr = format(d, "yyyy-MM-dd");
       const label = format(d, period === "monthly" ? "dd MMM" : "EEE", { locale: idLocale });
-      const dayTotal = (transactions ?? [])
+      const dayTotal = completed
         .filter((t) => t.created_at.startsWith(dateStr))
         .reduce((s, t) => s + t.total, 0);
       data.push({ date: label, total: dayTotal });
     }
     return data;
   }, [transactions, period]);
+
+  const filteredTransactions = useMemo(() => {
+    if (!transactions) return [];
+    return transactions.filter((tx) => {
+      if (filterStatus !== "all" && tx.status !== filterStatus) return false;
+      if (filterPayment !== "all" && tx.payment_method !== filterPayment) return false;
+      if (filterDate && !tx.created_at.startsWith(filterDate)) return false;
+      return true;
+    });
+  }, [transactions, filterStatus, filterPayment, filterDate]);
 
   const openDetail = async (txId: string) => {
     setDetailTxId(txId);
@@ -138,8 +161,8 @@ export default function OwnerDashboard() {
 
   const summaryCards = [
     { title: "Hari Ini", value: formatRupiah(stats.today), sub: `${stats.todayCount} transaksi`, icon: Receipt, color: "text-primary" },
-    { title: "Minggu Ini", value: formatRupiah(stats.week), icon: TrendingUp, color: "text-success" },
-    { title: "Bulan Ini", value: formatRupiah(stats.month), icon: BarChart3, color: "text-accent" },
+    { title: "Minggu Ini", value: formatRupiah(stats.week), icon: TrendingUp, color: "text-emerald-500" },
+    { title: "Bulan Ini", value: formatRupiah(stats.month), icon: BarChart3, color: "text-blue-500" },
   ];
 
   return (
@@ -202,38 +225,80 @@ export default function OwnerDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Transaksi Terbaru</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" /> Transaksi Terbaru
+            </CardTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="completed">Selesai</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterPayment} onValueChange={setFilterPayment}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pembayaran" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Pembayaran</SelectItem>
+                  <SelectItem value="cash">Tunai</SelectItem>
+                  <SelectItem value="qris">QRIS</SelectItem>
+                  <SelectItem value="transfer">Transfer Bank</SelectItem>
+                  <SelectItem value="ewallet">E-Wallet</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                placeholder="Tanggal"
+              />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {(transactions ?? []).slice(0, 10).map((tx) => (
-                <div key={tx.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-muted/50 p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{formatRupiah(tx.total)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(tx.created_at).toLocaleString("id-ID")} • {paymentLabel[tx.payment_method] ?? tx.payment_method}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openDetail(tx.id)}>
-                      <Eye className="h-3.5 w-3.5" />
-                      Lihat Detail
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setDeleteTxId(tx.id)}
-                      aria-label="Hapus transaksi"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <Badge variant={tx.is_synced ? "default" : "outline"} className={!tx.is_synced ? "text-warning border-warning" : ""}>
-                      {tx.is_synced ? "Synced" : "Offline"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+              {filteredTransactions.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Tidak ada transaksi ditemukan.</p>
+              ) : (
+                filteredTransactions.slice(0, 20).map((tx) => {
+                  const sc = statusConfig[tx.status] ?? { label: tx.status, variant: "secondary" as const };
+                  return (
+                    <div key={tx.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg bg-muted/50 p-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{formatRupiah(tx.total)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(tx.created_at).toLocaleString("id-ID")} • {paymentLabel[tx.payment_method] ?? tx.payment_method}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => openDetail(tx.id)}>
+                          <Eye className="h-3.5 w-3.5" />
+                          Detail
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteTxId(tx.id)}
+                          aria-label="Hapus transaksi"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Badge variant={sc.variant} className={tx.status === "pending" ? "border-amber-500 text-amber-600" : ""}>
+                          {sc.label}
+                        </Badge>
+                        <Badge variant={tx.is_synced ? "default" : "outline"} className={!tx.is_synced ? "border-amber-500 text-amber-600" : ""}>
+                          {tx.is_synced ? "Synced" : "Offline"}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
@@ -249,11 +314,14 @@ export default function OwnerDashboard() {
                   <span className="font-medium">
                     {format(new Date(detailTx.created_at), "dd MMM yyyy, HH:mm", { locale: idLocale })}
                   </span>
-                  <Badge variant={detailTx.is_synced ? "default" : "outline"} className={!detailTx.is_synced ? "text-warning border-warning" : ""}>
-                    {detailTx.is_synced ? "Synced" : "Offline"}
+                  <Badge variant={statusConfig[detailTx.status]?.variant ?? "secondary"}>
+                    {statusConfig[detailTx.status]?.label ?? detailTx.status}
                   </Badge>
                   <Badge variant="secondary">
                     {paymentLabel[detailTx.payment_method] ?? detailTx.payment_method}
+                  </Badge>
+                  <Badge variant={detailTx.is_synced ? "default" : "outline"} className={!detailTx.is_synced ? "border-amber-500 text-amber-600" : ""}>
+                    {detailTx.is_synced ? "Synced" : "Offline"}
                   </Badge>
                 </div>
 
@@ -308,17 +376,5 @@ export default function OwnerDashboard() {
         </AlertDialog>
       </div>
     </DashboardLayout>
-  );
-}
-
-function Badge({ variant, className = "", children }: { variant: string; className?: string; children: React.ReactNode }) {
-  const variantClass =
-    variant === "default" ? "bg-success/10 text-success" :
-    variant === "secondary" ? "bg-muted text-muted-foreground" :
-    `border ${className}`;
-  return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold shrink-0 ${variantClass}`}>
-      {children}
-    </span>
   );
 }

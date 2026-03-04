@@ -157,6 +157,7 @@ export type Database = {
           cashier_id: string
           change_amount: number
           created_at: string
+          failure_reason: string | null
           id: string
           is_synced: boolean
           offline_id: string | null
@@ -169,6 +170,7 @@ export type Database = {
           cashier_id: string
           change_amount?: number
           created_at?: string
+          failure_reason?: string | null
           id?: string
           is_synced?: boolean
           offline_id?: string | null
@@ -181,6 +183,7 @@ export type Database = {
           cashier_id?: string
           change_amount?: number
           created_at?: string
+          failure_reason?: string | null
           id?: string
           is_synced?: boolean
           offline_id?: string | null
