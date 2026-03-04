@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { formatRupiah } from "@/lib/formatCurrency";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Receipt, ChevronDown, ChevronUp, CheckCircle, Clock } from "lucide-react";
+import { Receipt, ChevronDown, ChevronUp, CheckCircle, Clock, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TransactionItem {
   id: string;
@@ -26,6 +27,7 @@ interface Transaction {
   total: number;
   payment_method: string;
   status: string;
+  failure_reason?: string | null;
   created_at: string;
   items?: TransactionItem[];
 }
@@ -40,6 +42,7 @@ const paymentLabel: Record<string, string> = {
 const statusConfig: Record<string, { label: string; className: string }> = {
   pending: { label: "Menunggu Pembayaran", className: "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
   completed: { label: "Selesai", className: "border-primary text-primary bg-primary/10" },
+  failed: { label: "Gagal", className: "border-destructive text-destructive bg-destructive/10" },
 };
 
 export default function RiwayatPesanan() {
@@ -49,13 +52,14 @@ export default function RiwayatPesanan() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-
+  const [failingId, setFailingId] = useState<string | null>(null);
+  const [failureReason, setFailureReason] = useState("");
   useEffect(() => {
     if (!user) return;
     const fetchTransactions = async () => {
       const { data } = await supabase
         .from("transactions")
-        .select("id, total, payment_method, status, created_at")
+        .select("id, total, payment_method, status, failure_reason, created_at")
         .eq("cashier_id", user.id)
         .order("created_at", { ascending: false });
       setTransactions(data ?? []);
@@ -104,6 +108,35 @@ export default function RiwayatPesanan() {
     }
   };
 
+  const handleFailed = async (txId: string) => {
+    if (!failureReason.trim()) {
+      toast({ title: "Alasan wajib diisi", variant: "destructive" });
+      return;
+    }
+    setProcessingId(txId);
+    try {
+      if (isOnline) {
+        const { error } = await supabase
+          .from("transactions")
+          .update({ status: "failed", failure_reason: failureReason.trim() } as any)
+          .eq("id", txId);
+        if (error) throw error;
+      } else {
+        await updateOfflineTransactionStatus(txId, "failed");
+      }
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === txId ? { ...t, status: "failed", failure_reason: failureReason.trim() } : t))
+      );
+      setFailingId(null);
+      setFailureReason("");
+      toast({ title: "Transaksi ditandai gagal" });
+    } catch (err: any) {
+      toast({ title: "Gagal memperbarui transaksi", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-2xl mx-auto">
@@ -131,7 +164,7 @@ export default function RiwayatPesanan() {
                     </CardTitle>
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       <Badge variant="outline" className={`gap-1 ${status.className}`}>
-                        {tx.status === "pending" ? <Clock className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                        {tx.status === "pending" ? <Clock className="h-3 w-3" /> : tx.status === "failed" ? <XCircle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
                         {status.label}
                       </Badge>
                       <Badge variant="secondary">
@@ -169,16 +202,55 @@ export default function RiwayatPesanan() {
                         ))}
                       </div>
                     )}
+                    {tx.status === "failed" && tx.failure_reason && (
+                      <div className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                        <p className="text-sm font-medium text-destructive">Alasan gagal:</p>
+                        <p className="text-sm text-muted-foreground mt-1">{tx.failure_reason}</p>
+                      </div>
+                    )}
                     {tx.status === "pending" && (
-                      <Button
-                        className="w-full mt-4"
-                        size="lg"
-                        disabled={processingId === tx.id}
-                        onClick={() => handleComplete(tx.id)}
-                      >
-                        <CheckCircle className="h-5 w-5 mr-2" />
-                        {processingId === tx.id ? "Memproses..." : "Transaksi Selesai"}
-                      </Button>
+                      <div className="flex gap-2 mt-4">
+                        <Button
+                          className="flex-1"
+                          size="lg"
+                          disabled={processingId === tx.id}
+                          onClick={() => handleComplete(tx.id)}
+                        >
+                          <CheckCircle className="h-5 w-5 mr-2" />
+                          {processingId === tx.id ? "Memproses..." : "Transaksi Selesai"}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="flex-1"
+                          size="lg"
+                          disabled={processingId === tx.id}
+                          onClick={() => {
+                            setFailingId(failingId === tx.id ? null : tx.id);
+                            setFailureReason("");
+                          }}
+                        >
+                          <XCircle className="h-5 w-5 mr-2" />
+                          Transaksi Gagal
+                        </Button>
+                      </div>
+                    )}
+                    {failingId === tx.id && tx.status === "pending" && (
+                      <div className="mt-3 space-y-2">
+                        <Textarea
+                          placeholder="Masukkan alasan kegagalan transaksi..."
+                          value={failureReason}
+                          onChange={(e) => setFailureReason(e.target.value)}
+                          rows={3}
+                        />
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          disabled={processingId === tx.id || !failureReason.trim()}
+                          onClick={() => handleFailed(tx.id)}
+                        >
+                          {processingId === tx.id ? "Memproses..." : "Konfirmasi Gagal"}
+                        </Button>
+                      </div>
                     )}
                   </CardContent>
                 )}

@@ -31,7 +31,7 @@ export interface OfflineTransaction {
   payment_method: string;
   amount_paid: number;
   change_amount: number;
-  status?: "pending" | "completed";
+  status?: "pending" | "completed" | "failed";
   items: {
     menu_item_id: string;
     menu_item_name: string;
@@ -74,7 +74,7 @@ export async function deleteOfflineTransaction(offlineId: string) {
 
 export async function updateOfflineTransactionStatus(
   offlineId: string,
-  status: "pending" | "completed"
+  status: "pending" | "completed" | "failed"
 ): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
