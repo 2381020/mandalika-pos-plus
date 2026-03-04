@@ -9,6 +9,7 @@ import {
   UtensilsCrossed,
   LogOut,
   Receipt,
+  FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +23,7 @@ const kasirLinks = [
 const ownerLinks = [
   { to: "/owner", icon: BarChart3, label: "Dashboard" },
   { to: "/owner/menu", icon: UtensilsCrossed, label: "Manajemen Menu" },
+  { to: "/owner/export", icon: FileDown, label: "Export Laporan" },
 ];
 
 const linkClass = (active: boolean) =>

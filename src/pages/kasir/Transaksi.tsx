@@ -140,22 +140,22 @@ export default function Transaksi() {
 
   return (
     <DashboardLayout>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_380px] lg:gap-6 lg:min-h-[calc(100vh-6rem)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_380px] lg:gap-6 lg:min-h-[calc(100vh-6rem)] pb-20 md:pb-0">
         {/* Menu Grid */}
         <div className="space-y-4 min-h-0 overflow-y-auto pr-0 lg:pr-2">
           <h1 className="text-xl sm:text-2xl font-bold">Transaksi Baru</h1>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Cari menu..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
+                className="pl-9 w-full"
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-40">
+              <SelectTrigger className="w-full sm:w-40 min-w-0">
                 <SelectValue placeholder="Kategori" />
               </SelectTrigger>
               <SelectContent>
@@ -167,24 +167,24 @@ export default function Transaksi() {
             </Select>
           </div>
 
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-2 xl:grid-cols-3">
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
-                className="cursor-pointer hover:shadow-md transition-shadow border"
+                className="cursor-pointer hover:shadow-md active:scale-[0.98] transition-all border touch-manipulation"
                 onClick={() => addToCart(item)}
               >
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   {item.image_url && (
                     <img
                       src={item.image_url}
                       alt={item.name}
-                      className="mb-3 h-32 w-full rounded-lg object-cover"
+                      className="mb-2 sm:mb-3 h-24 sm:h-32 w-full rounded-lg object-cover"
                       loading="lazy"
                     />
                   )}
-                  <h3 className="font-semibold text-sm">{item.name}</h3>
-                  <p className="text-primary font-bold mt-1">{formatRupiah(item.price)}</p>
+                  <h3 className="font-semibold text-xs sm:text-sm line-clamp-2">{item.name}</h3>
+                  <p className="text-primary font-bold mt-1 text-xs sm:text-base">{formatRupiah(item.price)}</p>
                 </CardContent>
               </Card>
             ))}
@@ -196,34 +196,34 @@ export default function Transaksi() {
 
         {/* Cart */}
         <Card className="flex flex-col overflow-hidden flex-shrink-0 lg:max-h-[calc(100vh-8rem)]">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ShoppingBag className="h-5 w-5" />
+          <CardHeader className="pb-3 py-3 sm:py-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <ShoppingBag className="h-5 w-5 shrink-0" />
               Keranjang ({cart.length})
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
+          <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto min-h-0">
             {cart.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Keranjang kosong</p>
+              <p className="text-sm text-muted-foreground text-center py-6 sm:py-8">Keranjang kosong</p>
             ) : (
-              <div className="space-y-3 flex-1">
+              <div className="space-y-2 sm:space-y-3 flex-1">
                 {cart.map((item) => (
-                  <div key={item.menu_item_id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{item.name}</p>
+                  <div key={item.menu_item_id} className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 rounded-lg bg-muted/50 p-2.5 sm:p-3">
+                    <div className="flex-1 min-w-0 w-full sm:w-auto order-1">
+                      <p className="font-medium text-xs sm:text-sm truncate">{item.name}</p>
                       <p className="text-xs text-muted-foreground">{formatRupiah(item.price)}</p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQty(item.menu_item_id, -1)}>
+                    <div className="flex items-center gap-1 order-2 shrink-0">
+                      <Button variant="outline" size="icon" className="h-8 w-8 sm:h-7 sm:w-7 touch-manipulation" onClick={(e) => { e.stopPropagation(); updateQty(item.menu_item_id, -1); }}>
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-8 text-center text-sm font-semibold">{item.quantity}</span>
-                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQty(item.menu_item_id, 1)}>
+                      <span className="w-7 sm:w-8 text-center text-xs sm:text-sm font-semibold tabular-nums">{item.quantity}</span>
+                      <Button variant="outline" size="icon" className="h-8 w-8 sm:h-7 sm:w-7 touch-manipulation" onClick={(e) => { e.stopPropagation(); updateQty(item.menu_item_id, 1); }}>
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
-                    <p className="text-sm font-semibold w-20 text-right">{formatRupiah(item.price * item.quantity)}</p>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeItem(item.menu_item_id)}>
+                    <p className="text-xs sm:text-sm font-semibold sm:w-20 text-right order-3 w-full sm:w-auto flex justify-end">{formatRupiah(item.price * item.quantity)}</p>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-7 sm:w-7 text-destructive shrink-0 order-4 touch-manipulation" onClick={(e) => { e.stopPropagation(); removeItem(item.menu_item_id); }}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -231,7 +231,7 @@ export default function Transaksi() {
               </div>
             )}
 
-            <div className="border-t pt-4 space-y-3 mt-auto">
+            <div className="border-t pt-4 space-y-3 mt-auto shrink-0">
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span className="text-primary">{formatRupiah(total)}</span>
@@ -273,7 +273,7 @@ export default function Transaksi() {
               )}
 
               <Button
-                className="w-full"
+                className="w-full touch-manipulation"
                 size="lg"
                 disabled={cart.length === 0 || processing}
                 onClick={handleBuatPesanan}
@@ -283,6 +283,26 @@ export default function Transaksi() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Mobile: sticky bottom bar untuk cepat checkout */}
+        {cart.length > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden border-t bg-background/95 backdrop-blur supports-[padding:env(safe-area-inset-bottom)]:pb-[env(safe-area-inset-bottom)] p-3 pt-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+            <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-lg font-bold text-primary">{formatRupiah(total)}</p>
+              </div>
+              <Button
+                className="shrink-0 touch-manipulation min-h-11 px-6"
+                size="lg"
+                disabled={processing}
+                onClick={handleBuatPesanan}
+              >
+                {processing ? "Memproses..." : "Buat Pesanan"}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

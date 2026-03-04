@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatRupiah } from "@/lib/formatCurrency";
-import { BarChart3, TrendingUp, Receipt, Eye, Trash2, Filter } from "lucide-react";
+import { BarChart3, TrendingUp, Receipt, Eye, Trash2, Filter, ChevronDown, ChevronUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,7 @@ const paymentLabel: Record<string, string> = {
 const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "Pending", variant: "outline" },
   completed: { label: "Selesai", variant: "default" },
+  failed: { label: "Gagal", variant: "destructive" },
 };
 
 export default function OwnerDashboard() {
@@ -59,6 +60,7 @@ export default function OwnerDashboard() {
   const [deleting, setDeleting] = useState(false);
 
   // Filters
+  const [filterOpen, setFilterOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPayment, setFilterPayment] = useState("all");
   const [filterDate, setFilterDate] = useState("");
@@ -224,40 +226,54 @@ export default function OwnerDashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" /> Transaksi Terbaru
-            </CardTitle>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="completed">Selesai</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterPayment} onValueChange={setFilterPayment}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pembayaran" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Pembayaran</SelectItem>
-                  <SelectItem value="cash">Tunai</SelectItem>
-                  <SelectItem value="qris">QRIS</SelectItem>
-                  <SelectItem value="transfer">Transfer Bank</SelectItem>
-                  <SelectItem value="ewallet">E-Wallet</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                placeholder="Tanggal"
-              />
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle>Transaksi Terbaru</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilterOpen((o) => !o)}
+                aria-label={filterOpen ? "Sembunyikan filter" : "Tampilkan filter"}
+                title={filterOpen ? "Sembunyikan filter" : "Tampilkan filter"}
+                className="shrink-0 gap-1.5 h-9 px-2"
+              >
+                <Filter className="h-4 w-4" />
+                {filterOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
             </div>
+            {filterOpen && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3">
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="completed">Selesai</SelectItem>
+                    <SelectItem value="failed">Gagal</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterPayment} onValueChange={setFilterPayment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pembayaran" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Pembayaran</SelectItem>
+                    <SelectItem value="cash">Tunai</SelectItem>
+                    <SelectItem value="qris">QRIS</SelectItem>
+                    <SelectItem value="transfer">Transfer Bank</SelectItem>
+                    <SelectItem value="ewallet">E-Wallet</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  placeholder="Tanggal"
+                />
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -324,6 +340,13 @@ export default function OwnerDashboard() {
                     {detailTx.is_synced ? "Synced" : "Offline"}
                   </Badge>
                 </div>
+
+                {detailTx.status === "failed" && detailTx.failure_reason && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                    <p className="text-sm font-medium text-destructive">Catatan kasir (alasan gagal):</p>
+                    <p className="text-sm text-muted-foreground mt-1">{detailTx.failure_reason}</p>
+                  </div>
+                )}
 
                 {detailLoading ? (
                   <p className="text-sm text-muted-foreground">Memuat detail...</p>

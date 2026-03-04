@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -7,12 +7,14 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatRupiah } from "@/lib/formatCurrency";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Receipt, ChevronDown, ChevronUp, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Receipt, ChevronDown, ChevronUp, CheckCircle, Clock, XCircle, Filter } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface TransactionItem {
   id: string;
@@ -54,6 +56,18 @@ export default function RiwayatPesanan() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [failingId, setFailingId] = useState<string | null>(null);
   const [failureReason, setFailureReason] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPayment, setFilterPayment] = useState("all");
+  const [filterDate, setFilterDate] = useState("");
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((tx) => {
+      if (filterStatus !== "all" && tx.status !== filterStatus) return false;
+      if (filterPayment !== "all" && tx.payment_method !== filterPayment) return false;
+      if (filterDate && !tx.created_at.startsWith(filterDate)) return false;
+      return true;
+    });
+  }, [transactions, filterStatus, filterPayment, filterDate]);
   useEffect(() => {
     if (!user) return;
     const fetchTransactions = async () => {
@@ -139,10 +153,65 @@ export default function RiwayatPesanan() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 max-w-2xl mx-auto">
+      <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto w-full">
         <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-          <Receipt className="h-6 w-6" /> Transaksi
+          <Receipt className="h-6 w-6 shrink-0" /> Transaksi
         </h1>
+
+        {!loading && transactions.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Transaksi</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFilterOpen((o) => !o)}
+                  aria-label={filterOpen ? "Sembunyikan filter" : "Tampilkan filter"}
+                  title={filterOpen ? "Sembunyikan filter" : "Tampilkan filter"}
+                  className="shrink-0 gap-1.5 h-9 px-2"
+                >
+                  <Filter className="h-4 w-4" />
+                  {filterOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
+              {filterOpen && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3">
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="completed">Selesai</SelectItem>
+                      <SelectItem value="failed">Gagal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterPayment} onValueChange={setFilterPayment}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Pembayaran" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Pembayaran</SelectItem>
+                      <SelectItem value="cash">Tunai</SelectItem>
+                      <SelectItem value="qris">QRIS</SelectItem>
+                      <SelectItem value="transfer">Transfer Bank</SelectItem>
+                      <SelectItem value="ewallet">E-Wallet</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    placeholder="Tanggal"
+                    className="w-full"
+                  />
+                </div>
+              )}
+            </CardHeader>
+          </Card>
+        )}
 
         {loading ? (
           <p className="text-muted-foreground">Memuat...</p>
@@ -152,37 +221,43 @@ export default function RiwayatPesanan() {
               Belum ada pesanan.
             </CardContent>
           </Card>
+        ) : filteredTransactions.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              Tidak ada transaksi sesuai filter.
+            </CardContent>
+          </Card>
         ) : (
-          transactions.map((tx) => {
+          filteredTransactions.map((tx) => {
             const status = statusConfig[tx.status] ?? { label: tx.status, className: "" };
             return (
-              <Card key={tx.id} className="cursor-pointer" onClick={() => toggleExpand(tx.id)}>
-                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
-                  <div className="min-w-0">
-                    <CardTitle className="text-base">
+              <Card key={tx.id} className="cursor-pointer touch-manipulation" onClick={() => toggleExpand(tx.id)}>
+                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2 p-4 sm:p-6">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-sm sm:text-base">
                       {format(new Date(tx.created_at), "dd MMM yyyy, HH:mm", { locale: id })}
                     </CardTitle>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      <Badge variant="outline" className={`gap-1 ${status.className}`}>
-                        {tx.status === "pending" ? <Clock className="h-3 w-3" /> : tx.status === "failed" ? <XCircle className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      <Badge variant="outline" className={`gap-1 text-xs ${status.className}`}>
+                        {tx.status === "pending" ? <Clock className="h-3 w-3 shrink-0" /> : tx.status === "failed" ? <XCircle className="h-3 w-3 shrink-0" /> : <CheckCircle className="h-3 w-3 shrink-0" />}
                         {status.label}
                       </Badge>
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="text-xs">
                         {paymentLabel[tx.payment_method] ?? tx.payment_method}
                       </Badge>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">{formatRupiah(tx.total)}</span>
+                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                    <span className="font-semibold text-sm sm:text-base">{formatRupiah(tx.total)}</span>
                     {expandedId === tx.id ? (
-                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                     )}
                   </div>
                 </CardHeader>
                 {expandedId === tx.id && (
-                  <CardContent className="pt-0" onClick={(e) => e.stopPropagation()}>
+                  <CardContent className="pt-0 px-4 pb-4 sm:px-6 sm:pb-6" onClick={(e) => e.stopPropagation()}>
                     {!tx.items ? (
                       <p className="text-sm text-muted-foreground">Memuat detail...</p>
                     ) : (
@@ -209,19 +284,19 @@ export default function RiwayatPesanan() {
                       </div>
                     )}
                     {tx.status === "pending" && (
-                      <div className="flex gap-2 mt-4">
+                      <div className="flex flex-col sm:flex-row gap-3 mt-4">
                         <Button
-                          className="flex-1"
+                          className="flex-1 w-full touch-manipulation min-h-12 sm:min-h-10 text-base sm:text-sm font-medium px-4"
                           size="lg"
                           disabled={processingId === tx.id}
                           onClick={() => handleComplete(tx.id)}
                         >
-                          <CheckCircle className="h-5 w-5 mr-2" />
+                          <CheckCircle className="h-5 w-5 sm:h-4 sm:w-4 mr-2 shrink-0" />
                           {processingId === tx.id ? "Memproses..." : "Transaksi Selesai"}
                         </Button>
                         <Button
                           variant="destructive"
-                          className="flex-1"
+                          className="flex-1 w-full touch-manipulation min-h-12 sm:min-h-10 text-base sm:text-sm font-medium px-4"
                           size="lg"
                           disabled={processingId === tx.id}
                           onClick={() => {
@@ -229,7 +304,7 @@ export default function RiwayatPesanan() {
                             setFailureReason("");
                           }}
                         >
-                          <XCircle className="h-5 w-5 mr-2" />
+                          <XCircle className="h-5 w-5 sm:h-4 sm:w-4 mr-2 shrink-0" />
                           Transaksi Gagal
                         </Button>
                       </div>

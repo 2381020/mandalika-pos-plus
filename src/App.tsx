@@ -12,6 +12,7 @@ import Transaksi from "./pages/kasir/Transaksi";
 import Sinkronisasi from "./pages/kasir/Sinkronisasi";
 import OwnerDashboard from "./pages/owner/OwnerDashboard";
 import ManajemenMenu from "./pages/owner/ManajemenMenu";
+import ExportLaporan from "./pages/owner/ExportLaporan";
 import Pesan from "./pages/customer/Pesan";
 import RiwayatPesanan from "./pages/customer/RiwayatPesanan";
 import Katalog from "./pages/katalog/Katalog";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/kasir/sinkronisasi" element={<ProtectedRoute allowedRoles={["kasir", "admin"]}><Sinkronisasi /></ProtectedRoute>} />
             <Route path="/owner" element={<ProtectedRoute allowedRoles={["owner", "admin"]}><OwnerDashboard /></ProtectedRoute>} />
             <Route path="/owner/menu" element={<ProtectedRoute allowedRoles={["owner", "admin"]}><ManajemenMenu /></ProtectedRoute>} />
+            <Route path="/owner/export" element={<ProtectedRoute allowedRoles={["owner", "admin"]}><ExportLaporan /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
