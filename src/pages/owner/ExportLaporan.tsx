@@ -254,7 +254,7 @@ export default function ExportLaporan() {
                     Pilih bulan lain
                   </Button>
                 </div>
-                <div className="border rounded-lg overflow-x-auto overflow-y-auto max-h-[70vh] bg-muted/30 p-4 overscroll-x-contain touch-pan-x">
+                <div className="border rounded-lg overflow-auto max-h-[70vh] min-h-[280px] bg-muted/30 p-4 overscroll-contain touch-pan-x touch-pan-y [-webkit-overflow-scrolling:touch]">
                   <ReportPreviewHtml data={reportData} />
                 </div>
                 <Dialog open={fullScreenOpen} onOpenChange={setFullScreenOpen}>
