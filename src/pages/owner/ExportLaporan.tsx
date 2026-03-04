@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -6,7 +6,13 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileDown } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FileDown, Maximize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { buildMonthlyReportData, generateMonthlyReportPdf, type MonthlyReportData } from "@/lib/monthlyReportPdf";
 import { formatRupiah } from "@/lib/formatCurrency";
@@ -19,9 +25,15 @@ const paymentLabel: Record<string, string> = {
   ewallet: "E-Wallet",
 };
 
-function ReportPreviewHtml({ data }: { data: MonthlyReportData }) {
+function ReportPreviewHtml({
+  data,
+  className = "",
+}: {
+  data: MonthlyReportData;
+  className?: string;
+}) {
   return (
-    <div className="report-preview bg-white text-gray-900 rounded-lg border border-border shadow-sm overflow-hidden print:shadow-none print:border-0">
+    <div className={`report-preview bg-white text-gray-900 rounded-lg border border-border shadow-sm overflow-hidden print:shadow-none print:border-0 min-w-max ${className}`}>
       <div className="p-6 sm:p-8">
         <h2 className="text-xl font-bold tracking-tight border-b-2 border-primary/30 pb-2">
           Laporan Bulanan Restoran
@@ -104,6 +116,33 @@ export default function ExportLaporan() {
   const [exportMonthYear, setExportMonthYear] = useState(() => format(new Date(), "yyyy-MM"));
   const [reportData, setReportData] = useState<MonthlyReportData | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [fullScreenOpen, setFullScreenOpen] = useState(false);
+  const [fitScale, setFitScale] = useState(1);
+  const fullScreenContainerRef = useRef<HTMLDivElement>(null);
+  const fullScreenContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!fullScreenOpen || !reportData) return;
+    const updateScale = () => {
+      const container = fullScreenContainerRef.current;
+      const content = fullScreenContentRef.current;
+      if (!container || !content) return;
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+      const sw = content.scrollWidth;
+      const sh = content.scrollHeight;
+      if (sw <= 0 || sh <= 0) return;
+      const scale = Math.min(cw / sw, ch / sh, 1);
+      setFitScale(scale);
+    };
+    requestAnimationFrame(() => requestAnimationFrame(updateScale));
+    const t = setTimeout(updateScale, 200);
+    window.addEventListener("resize", updateScale);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", updateScale);
+    };
+  }, [fullScreenOpen, reportData]);
 
   const { data: transactions } = useQuery({
     queryKey: ["owner-transactions"],
@@ -203,13 +242,40 @@ export default function ExportLaporan() {
                     <FileDown className="h-4 w-4" />
                     {generatingPdf ? "Membuat PDF..." : "Download PDF"}
                   </Button>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => setFullScreenOpen(true)}
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                    Full screen
+                  </Button>
                   <Button variant="outline" onClick={handlePilihBulanLain}>
                     Pilih bulan lain
                   </Button>
                 </div>
-                <div className="border rounded-lg overflow-auto max-h-[70vh] bg-muted/30 p-4">
+                <div className="border rounded-lg overflow-x-auto overflow-y-auto max-h-[70vh] bg-muted/30 p-4 overscroll-x-contain touch-pan-x">
                   <ReportPreviewHtml data={reportData} />
                 </div>
+                <Dialog open={fullScreenOpen} onOpenChange={setFullScreenOpen}>
+                  <DialogContent className="fixed inset-0 z-50 w-[100vw] h-[100dvh] max-w-none translate-x-0 translate-y-0 rounded-none p-0 gap-0 overflow-hidden flex flex-col data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95">
+                    <DialogHeader className="px-4 py-3 border-b shrink-0 bg-background">
+                      <DialogTitle className="text-base">Preview Laporan — {reportData.monthLabel}</DialogTitle>
+                    </DialogHeader>
+                    <div
+                      ref={fullScreenContainerRef}
+                      className="flex-1 min-h-0 overflow-hidden flex items-center justify-center bg-muted/30 p-2"
+                    >
+                      <div
+                        ref={fullScreenContentRef}
+                        className="origin-center shrink-0"
+                        style={{ transform: `scale(${fitScale})` }}
+                      >
+                        <ReportPreviewHtml data={reportData} />
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </>
             )}
           </CardContent>
