@@ -171,13 +171,5 @@ export function generateMonthlyReportPdf(data: MonthlyReportData): Blob {
     }
   }
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(
-    `Dibuat pada ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: idLocale })}`,
-    margin,
-    doc.getPageHeight() - 12
-  );
-
   return doc.output("blob");
 }

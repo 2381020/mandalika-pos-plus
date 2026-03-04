@@ -176,9 +176,9 @@ export default function RiwayatPesanan() {
                 </Button>
               </div>
               {filterOpen && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full min-h-11">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -189,7 +189,7 @@ export default function RiwayatPesanan() {
                     </SelectContent>
                   </Select>
                   <Select value={filterPayment} onValueChange={setFilterPayment}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-full min-h-11">
                       <SelectValue placeholder="Pembayaran" />
                     </SelectTrigger>
                     <SelectContent>
@@ -200,13 +200,16 @@ export default function RiwayatPesanan() {
                       <SelectItem value="ewallet">E-Wallet</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Input
-                    type="date"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                    placeholder="Tanggal"
-                    className="w-full"
-                  />
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground block">Tanggal</label>
+                    <Input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      aria-label="Filter berdasarkan tanggal"
+                      className="w-full min-h-11 text-foreground"
+                    />
+                  </div>
                 </div>
               )}
             </CardHeader>

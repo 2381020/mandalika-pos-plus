@@ -1,18 +1,108 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { buildMonthlyReportData, generateMonthlyReportPdf } from "@/lib/monthlyReportPdf";
+import { buildMonthlyReportData, generateMonthlyReportPdf, type MonthlyReportData } from "@/lib/monthlyReportPdf";
+import { formatRupiah } from "@/lib/formatCurrency";
 import { toast } from "@/hooks/use-toast";
+
+const paymentLabel: Record<string, string> = {
+  cash: "Tunai",
+  qris: "QRIS",
+  transfer: "Transfer Bank",
+  ewallet: "E-Wallet",
+};
+
+function ReportPreviewHtml({ data }: { data: MonthlyReportData }) {
+  return (
+    <div className="report-preview bg-white text-gray-900 rounded-lg border border-border shadow-sm overflow-hidden print:shadow-none print:border-0">
+      <div className="p-6 sm:p-8">
+        <h2 className="text-xl font-bold tracking-tight border-b-2 border-primary/30 pb-2">
+          Laporan Bulanan Restoran
+        </h2>
+        <p className="text-sm text-gray-600 mt-1">Mandalika POS</p>
+        <p className="text-lg font-semibold mt-3">{data.monthLabel}</p>
+
+        <div className="mt-6 space-y-2 text-sm">
+          <p><span className="font-medium">Total transaksi selesai:</span> {data.completedCount}</p>
+          <p><span className="font-medium">Total transaksi pending:</span> {data.pendingCount}</p>
+          <p><span className="font-medium">Total transaksi gagal:</span> {data.failedCount}</p>
+          <p><span className="font-medium">Total pendapatan:</span>{" "}
+            <span className="font-semibold text-primary">{formatRupiah(data.totalRevenue)}</span>
+          </p>
+        </div>
+
+        {Object.keys(data.byPayment).length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-2">
+              Per metode pembayaran
+            </h3>
+            <ul className="space-y-1.5 text-sm">
+              {Object.entries(data.byPayment).map(([key, v]) => (
+                <li key={key} className="flex flex-wrap gap-x-2">
+                  <span>{paymentLabel[key] || key}:</span>
+                  <span>{v.count} transaksi</span>
+                  <span className="font-medium">— {formatRupiah(v.total)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {data.transactions.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-3">
+              Daftar transaksi
+            </h3>
+            <div className="border border-gray-200 rounded-md overflow-hidden">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 text-left">
+                    <th className="px-3 py-2.5 font-semibold border-b border-gray-200">Tanggal</th>
+                    <th className="px-3 py-2.5 font-semibold border-b border-gray-200">Waktu</th>
+                    <th className="px-3 py-2.5 font-semibold border-b border-gray-200">Total</th>
+                    <th className="px-3 py-2.5 font-semibold border-b border-gray-200">Metode</th>
+                    <th className="px-3 py-2.5 font-semibold border-b border-gray-200">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.transactions.slice(0, 50).map((tx) => {
+                    const d = new Date(tx.created_at);
+                    return (
+                      <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                        <td className="px-3 py-2">{format(d, "dd/MM/yyyy", { locale: idLocale })}</td>
+                        <td className="px-3 py-2">{format(d, "HH:mm", { locale: idLocale })}</td>
+                        <td className="px-3 py-2 font-medium">{formatRupiah(tx.total)}</td>
+                        <td className="px-3 py-2">{paymentLabel[tx.payment_method] ?? tx.payment_method}</td>
+                        <td className="px-3 py-2">{tx.status}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {data.transactions.length > 50 && (
+                <p className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-t border-gray-100">
+                  ... dan {data.transactions.length - 50} transaksi lainnya.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
 
 export default function ExportLaporan() {
   const [exportMonthYear, setExportMonthYear] = useState(() => format(new Date(), "yyyy-MM"));
-  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<MonthlyReportData | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
 
   const { data: transactions } = useQuery({
@@ -26,18 +116,27 @@ export default function ExportLaporan() {
     },
   });
 
-  const handlePreviewPdf = () => {
+  const handlePreview = () => {
     if (!transactions?.length) {
       toast({ title: "Tidak ada data transaksi", variant: "destructive" });
       return;
     }
+    const data = buildMonthlyReportData(transactions, exportMonthYear);
+    setReportData(data);
+  };
+
+  const handleDownloadPdf = () => {
+    if (!reportData) return;
     setGeneratingPdf(true);
     try {
-      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
-      const reportData = buildMonthlyReportData(transactions, exportMonthYear);
       const blob = generateMonthlyReportPdf(reportData);
       const url = URL.createObjectURL(blob);
-      setPdfBlobUrl(url);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Laporan-Bulanan-${exportMonthYear}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF berhasil diunduh" });
     } catch (err) {
       toast({
         title: "Gagal membuat PDF",
@@ -49,17 +148,8 @@ export default function ExportLaporan() {
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (!pdfBlobUrl) return;
-    const a = document.createElement("a");
-    a.href = pdfBlobUrl;
-    a.download = `Laporan-Bulanan-${exportMonthYear}.pdf`;
-    a.click();
-  };
-
   const handlePilihBulanLain = () => {
-    if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
-    setPdfBlobUrl(null);
+    setReportData(null);
   };
 
   return (
@@ -71,7 +161,7 @@ export default function ExportLaporan() {
             Export Laporan Bulanan
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Ekspor laporan bulanan restoran dalam bentuk PDF dan preview sebelum unduh.
+            Preview laporan dalam HTML, lalu unduh dalam bentuk PDF.
           </p>
         </div>
 
@@ -80,7 +170,7 @@ export default function ExportLaporan() {
             <CardTitle className="text-base">Laporan Bulanan</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!pdfBlobUrl ? (
+            {!reportData ? (
               <>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground block mb-2">
@@ -94,31 +184,31 @@ export default function ExportLaporan() {
                   />
                 </div>
                 <Button
-                  onClick={handlePreviewPdf}
-                  disabled={generatingPdf || !transactions?.length}
+                  onClick={handlePreview}
+                  disabled={!transactions?.length}
                   className="gap-2"
                 >
                   <FileDown className="h-4 w-4" />
-                  {generatingPdf ? "Membuat PDF..." : "Preview PDF"}
+                  Preview
                 </Button>
               </>
             ) : (
               <>
                 <div className="flex gap-2 flex-wrap">
-                  <Button onClick={handleDownloadPdf} className="gap-2">
+                  <Button
+                    onClick={handleDownloadPdf}
+                    disabled={generatingPdf}
+                    className="gap-2"
+                  >
                     <FileDown className="h-4 w-4" />
-                    Download PDF
+                    {generatingPdf ? "Membuat PDF..." : "Download PDF"}
                   </Button>
                   <Button variant="outline" onClick={handlePilihBulanLain}>
                     Pilih bulan lain
                   </Button>
                 </div>
-                <div className="min-h-[400px] border rounded-lg overflow-hidden bg-muted/30">
-                  <iframe
-                    title="Preview Laporan PDF"
-                    src={pdfBlobUrl}
-                    className="w-full min-h-[500px] border-0"
-                  />
+                <div className="border rounded-lg overflow-auto max-h-[70vh] bg-muted/30 p-4">
+                  <ReportPreviewHtml data={reportData} />
                 </div>
               </>
             )}
