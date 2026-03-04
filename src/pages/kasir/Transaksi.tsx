@@ -9,9 +9,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMenuItems, useCategories } from "@/hooks/useMenuData";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { formatRupiah } from "@/lib/formatCurrency";
-import { saveOfflineTransaction } from "@/lib/offlineDb";
+import { saveOfflineTransaction, updateOfflineTransactionStatus } from "@/lib/offlineDb";
 import { toast } from "@/hooks/use-toast";
-import { Search, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingBag, CheckCircle, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CartItem {
@@ -30,6 +30,12 @@ export default function Transaksi() {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [pendingTx, setPendingTx] = useState<{
+    id: string;
+    total: number;
+    payment_method: string;
+    items: { menu_item_name: string; quantity: number; subtotal: number }[];
+  } | null>(null);
 
   const { data: categories } = useCategories();
   const { data: menuItems } = useMenuItems();
@@ -42,7 +48,14 @@ export default function Transaksi() {
     });
   }, [menuItems, search, categoryFilter]);
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const paymentLabel: Record<string, string> = {
+  cash: "Tunai",
+  qris: "QRIS",
+  transfer: "Transfer Bank",
+  ewallet: "E-Wallet",
+};
+
+const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const paidNum = parseInt(amountPaid) || 0;
   const change = paymentMethod === "cash" ? Math.max(0, paidNum - total) : 0;
 
@@ -68,7 +81,7 @@ export default function Transaksi() {
     setCart((prev) => prev.filter((c) => c.menu_item_id !== id));
   };
 
-  const handleCheckout = async () => {
+  const handleBuatPesanan = async () => {
     if (cart.length === 0) return;
     if (paymentMethod === "cash" && paidNum < total) {
       toast({ title: "Jumlah bayar kurang", variant: "destructive" });
@@ -102,6 +115,7 @@ export default function Transaksi() {
             amount_paid: txData.amount_paid,
             change_amount: txData.change_amount,
             is_synced: true,
+            status: "pending",
           })
           .select()
           .single();
@@ -111,20 +125,68 @@ export default function Transaksi() {
           txData.items.map((item) => ({ ...item, transaction_id: tx.id }))
         );
 
-        toast({ title: "Transaksi berhasil!", description: `Total: ${formatRupiah(total)}` });
+        setPendingTx({
+          id: tx.id,
+          total: txData.total,
+          payment_method: txData.payment_method,
+          items: txData.items.map((c) => ({
+            menu_item_name: c.menu_item_name,
+            quantity: c.quantity,
+            subtotal: c.subtotal,
+          })),
+        });
+        setCart([]);
+        setAmountPaid("");
+        toast({ title: "Pesanan dibuat", description: "Menunggu pembayaran" });
       } else {
+        const offlineId = crypto.randomUUID();
         await saveOfflineTransaction({
           ...txData,
-          offline_id: crypto.randomUUID(),
+          status: "pending",
+          offline_id: offlineId,
           created_at: new Date().toISOString(),
         });
-        toast({ title: "Transaksi disimpan offline", description: "Akan disinkronkan saat online" });
+        setPendingTx({
+          id: offlineId,
+          total: txData.total,
+          payment_method: txData.payment_method,
+          items: txData.items.map((c) => ({
+            menu_item_name: c.menu_item_name,
+            quantity: c.quantity,
+            subtotal: c.subtotal,
+          })),
+        });
+        setCart([]);
+        setAmountPaid("");
+        toast({ title: "Pesanan disimpan offline", description: "Menunggu pembayaran" });
       }
-
-      setCart([]);
-      setAmountPaid("");
     } catch (err: any) {
-      toast({ title: "Gagal menyimpan transaksi", description: err.message, variant: "destructive" });
+      toast({ title: "Gagal membuat pesanan", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleTransaksiSelesai = async () => {
+    if (!pendingTx) return;
+    setProcessing(true);
+    try {
+      if (isOnline) {
+        const { error } = await supabase
+          .from("transactions")
+          .update({ status: "completed" })
+          .eq("id", pendingTx.id);
+        if (error) throw error;
+      } else {
+        await updateOfflineTransactionStatus(pendingTx.id, "completed");
+      }
+      toast({
+        title: "Transaksi selesai",
+        description: "Transaksi telah masuk ke owner",
+      });
+      setPendingTx(null);
+    } catch (err: any) {
+      toast({ title: "Gagal menyelesaikan transaksi", description: err.message, variant: "destructive" });
     } finally {
       setProcessing(false);
     }
@@ -186,18 +248,61 @@ export default function Transaksi() {
           </div>
         </div>
 
-        {/* Cart */}
+        {/* Cart / Pending Transaction */}
         <Card className="flex flex-col overflow-hidden flex-shrink-0 lg:max-h-[calc(100vh-8rem)]">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ShoppingBag className="h-5 w-5" />
-              Keranjang ({cart.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
-            {cart.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Keranjang kosong</p>
-            ) : (
+          {pendingTx ? (
+            <>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">Detail Transaksi</CardTitle>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="w-fit gap-1.5 text-amber-600 border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                    <Clock className="h-3.5 w-3.5" />
+                    Menunggu Pembayaran
+                  </Badge>
+                  <Badge variant="secondary">{paymentLabel[pendingTx.payment_method] ?? pendingTx.payment_method}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
+                <div className="space-y-2">
+                  {pendingTx.items.map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex justify-between items-center rounded-lg border bg-muted/40 px-3 py-2 text-sm"
+                    >
+                      <span>
+                        {item.menu_item_name} × {item.quantity}
+                      </span>
+                      <span className="font-medium">{formatRupiah(item.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between text-lg font-bold border-t pt-4">
+                  <span>Total</span>
+                  <span className="text-primary">{formatRupiah(pendingTx.total)}</span>
+                </div>
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  size="lg"
+                  disabled={processing}
+                  onClick={handleTransaksiSelesai}
+                >
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  {processing ? "Memproses..." : "Transaksi Selesai"}
+                </Button>
+              </CardContent>
+            </>
+          ) : (
+            <>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ShoppingBag className="h-5 w-5" />
+                  Keranjang ({cart.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
+                {cart.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Keranjang kosong</p>
+                ) : (
               <div className="space-y-3 flex-1">
                 {cart.map((item) => (
                   <div key={item.menu_item_id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
@@ -268,12 +373,14 @@ export default function Transaksi() {
                 className="w-full"
                 size="lg"
                 disabled={cart.length === 0 || processing}
-                onClick={handleCheckout}
+                onClick={handleBuatPesanan}
               >
-                {processing ? "Memproses..." : "Bayar"}
+                {processing ? "Memproses..." : "Buat Pesanan"}
               </Button>
             </div>
           </CardContent>
+            </>
+          )}
         </Card>
       </div>
     </DashboardLayout>

@@ -31,6 +31,7 @@ export interface OfflineTransaction {
   payment_method: string;
   amount_paid: number;
   change_amount: number;
+  status?: "pending" | "completed";
   items: {
     menu_item_id: string;
     menu_item_name: string;
@@ -68,6 +69,25 @@ export async function deleteOfflineTransaction(offlineId: string) {
     t.objectStore(STORE_NAME).delete(offlineId);
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
+  });
+}
+
+export async function updateOfflineTransactionStatus(
+  offlineId: string,
+  status: "pending" | "completed"
+): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const t = db.transaction(STORE_NAME, "readwrite");
+    const store = t.objectStore(STORE_NAME);
+    const req = store.get(offlineId);
+    req.onsuccess = () => {
+      const tx = req.result;
+      if (!tx) return reject(new Error("Transaction not found"));
+      store.put({ ...tx, status });
+      resolve();
+    };
+    req.onerror = () => reject(req.error);
   });
 }
 

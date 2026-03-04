@@ -16,8 +16,9 @@ export default function Sinkronisasi() {
   const [syncing, setSyncing] = useState(false);
 
   const loadOffline = useCallback(async () => {
-    const txs = await getOfflineTransactions();
-    setTransactions(txs);
+    const all = await getOfflineTransactions();
+    // Hanya transaksi yang sudah selesai (status completed) yang bisa disinkronkan
+    setTransactions(all.filter((t) => (t.status ?? "completed") === "completed"));
   }, []);
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function Sinkronisasi() {
             is_synced: true,
             offline_id: tx.offline_id,
             created_at: tx.created_at,
+            status: tx.status ?? "completed",
           })
           .select()
           .single();

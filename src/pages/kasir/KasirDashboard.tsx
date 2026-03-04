@@ -16,7 +16,10 @@ export default function KasirDashboard() {
   const [offlineCount, setOfflineCount] = useState(0);
 
   useEffect(() => {
-    getOfflineTransactions().then((txs) => setOfflineCount(txs.length));
+    getOfflineTransactions().then((txs) => {
+      const syncedCount = txs.filter((t) => (t.status ?? "completed") === "completed").length;
+      setOfflineCount(syncedCount);
+    });
   }, []);
 
   const today = new Date().toISOString().split("T")[0];
@@ -28,6 +31,7 @@ export default function KasirDashboard() {
         .from("transactions")
         .select("total")
         .eq("cashier_id", user!.id)
+        .eq("status", "completed")
         .gte("created_at", today + "T00:00:00")
         .lte("created_at", today + "T23:59:59");
       const count = data?.length ?? 0;

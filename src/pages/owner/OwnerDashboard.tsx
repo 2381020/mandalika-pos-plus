@@ -58,6 +58,7 @@ export default function OwnerDashboard() {
       const { data } = await supabase
         .from("transactions")
         .select("*")
+        .eq("status", "completed")
         .order("created_at", { ascending: false });
       return data ?? [];
     },

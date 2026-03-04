@@ -161,6 +161,7 @@ export type Database = {
           is_synced: boolean
           offline_id: string | null
           payment_method: string
+          status: string
           total: number
         }
         Insert: {
@@ -172,6 +173,7 @@ export type Database = {
           is_synced?: boolean
           offline_id?: string | null
           payment_method?: string
+          status?: string
           total?: number
         }
         Update: {
@@ -183,6 +185,7 @@ export type Database = {
           is_synced?: boolean
           offline_id?: string | null
           payment_method?: string
+          status?: string
           total?: number
         }
         Relationships: []
