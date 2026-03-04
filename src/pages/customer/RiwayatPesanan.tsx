@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { updateOfflineTransactionStatus } from "@/lib/offlineDb";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatRupiah } from "@/lib/formatCurrency";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { Receipt, ChevronDown, ChevronUp } from "lucide-react";
+import { Receipt, ChevronDown, ChevronUp, CheckCircle, Clock } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 interface TransactionItem {
   id: string;
@@ -21,22 +25,37 @@ interface Transaction {
   id: string;
   total: number;
   payment_method: string;
+  status: string;
   created_at: string;
   items?: TransactionItem[];
 }
 
+const paymentLabel: Record<string, string> = {
+  cash: "Tunai",
+  qris: "QRIS",
+  transfer: "Transfer Bank",
+  ewallet: "E-Wallet",
+};
+
+const statusConfig: Record<string, { label: string; className: string }> = {
+  pending: { label: "Menunggu Pembayaran", className: "border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30" },
+  completed: { label: "Selesai", className: "border-primary text-primary bg-primary/10" },
+};
+
 export default function RiwayatPesanan() {
   const { user } = useAuth();
+  const isOnline = useOnlineStatus();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     const fetchTransactions = async () => {
       const { data } = await supabase
         .from("transactions")
-        .select("id, total, payment_method, created_at")
+        .select("id, total, payment_method, status, created_at")
         .eq("cashier_id", user.id)
         .order("created_at", { ascending: false });
       setTransactions(data ?? []);
@@ -62,11 +81,27 @@ export default function RiwayatPesanan() {
     );
   };
 
-  const paymentLabel: Record<string, string> = {
-    cash: "Tunai",
-    qris: "QRIS",
-    debit: "Debit",
-    credit: "Kredit",
+  const handleComplete = async (txId: string) => {
+    setProcessingId(txId);
+    try {
+      if (isOnline) {
+        const { error } = await supabase
+          .from("transactions")
+          .update({ status: "completed" })
+          .eq("id", txId);
+        if (error) throw error;
+      } else {
+        await updateOfflineTransactionStatus(txId, "completed");
+      }
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === txId ? { ...t, status: "completed" } : t))
+      );
+      toast({ title: "Transaksi selesai", description: "Transaksi telah masuk ke owner" });
+    } catch (err: any) {
+      toast({ title: "Gagal menyelesaikan transaksi", description: err.message, variant: "destructive" });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   return (
@@ -85,55 +120,71 @@ export default function RiwayatPesanan() {
             </CardContent>
           </Card>
         ) : (
-          transactions.map((tx) => (
-            <Card
-              key={tx.id}
-              className="cursor-pointer"
-              onClick={() => toggleExpand(tx.id)}
-            >
-              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
-                <div className="min-w-0">
-                  <CardTitle className="text-base">
-                    {format(new Date(tx.created_at), "dd MMM yyyy, HH:mm", { locale: id })}
-                  </CardTitle>
-                  <Badge variant="secondary" className="mt-1">
-                    {paymentLabel[tx.payment_method] ?? tx.payment_method}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{formatRupiah(tx.total)}</span>
-                  {expandedId === tx.id ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-              </CardHeader>
-              {expandedId === tx.id && (
-                <CardContent className="pt-0">
-                  {!tx.items ? (
-                    <p className="text-sm text-muted-foreground">Memuat detail...</p>
-                  ) : (
-                    <div className="space-y-2 mt-2">
-                      {tx.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm"
-                        >
-                          <span className="mr-3">
-                            {item.menu_item_name} × {item.quantity}
-                          </span>
-                          <span className="font-medium">
-                            {formatRupiah(item.subtotal)}
-                          </span>
-                        </div>
-                      ))}
+          transactions.map((tx) => {
+            const status = statusConfig[tx.status] ?? { label: tx.status, className: "" };
+            return (
+              <Card key={tx.id} className="cursor-pointer" onClick={() => toggleExpand(tx.id)}>
+                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
+                  <div className="min-w-0">
+                    <CardTitle className="text-base">
+                      {format(new Date(tx.created_at), "dd MMM yyyy, HH:mm", { locale: id })}
+                    </CardTitle>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      <Badge variant="outline" className={`gap-1 ${status.className}`}>
+                        {tx.status === "pending" ? <Clock className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                        {status.label}
+                      </Badge>
+                      <Badge variant="secondary">
+                        {paymentLabel[tx.payment_method] ?? tx.payment_method}
+                      </Badge>
                     </div>
-                  )}
-                </CardContent>
-              )}
-            </Card>
-          ))
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{formatRupiah(tx.total)}</span>
+                    {expandedId === tx.id ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </CardHeader>
+                {expandedId === tx.id && (
+                  <CardContent className="pt-0" onClick={(e) => e.stopPropagation()}>
+                    {!tx.items ? (
+                      <p className="text-sm text-muted-foreground">Memuat detail...</p>
+                    ) : (
+                      <div className="space-y-2 mt-2">
+                        {tx.items.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm"
+                          >
+                            <span className="mr-3">
+                              {item.menu_item_name} × {item.quantity}
+                            </span>
+                            <span className="font-medium">
+                              {formatRupiah(item.subtotal)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {tx.status === "pending" && (
+                      <Button
+                        className="w-full mt-4"
+                        size="lg"
+                        disabled={processingId === tx.id}
+                        onClick={() => handleComplete(tx.id)}
+                      >
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                        {processingId === tx.id ? "Memproses..." : "Transaksi Selesai"}
+                      </Button>
+                    )}
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })
         )}
       </div>
     </DashboardLayout>
